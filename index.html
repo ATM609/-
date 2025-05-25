@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雷までの距離計算アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a clean look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+            transition: background-color 0.3s ease; /* Smooth theme transition */
+        }
+        body.dark-mode {
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
+        }
+        .screen-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Rounded corners */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* Soft shadow */
+            padding: 2rem;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px; /* Ensure minimum height for all screens */
+            transition: opacity 0.5s ease-in-out, background-color 0.3s ease, color 0.3s ease;
+            position: relative; /* For settings button positioning */
+        }
+        body.dark-mode .screen-container {
+            background-color: #2d3748; /* Darker container */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+        body.dark-mode .screen-container h1,
+        body.dark-mode .screen-container ol,
+        body.dark-mode .screen-container p,
+        body.dark-mode .screen-container li {
+            color: #e2e8f0; /* Light text for headings/lists */
+        }
+        body.dark-mode .unit-label {
+            color: #a0aec0; /* Lighter gray for unit label in dark mode */
+        }
+        body.dark-mode .input-field {
+            background-color: #4a5568; /* Darker input field */
+            color: #e2e8f0;
+            border-color: #4a5568;
+        }
+        body.dark-mode .input-field::placeholder {
+            color: #cbd5e0;
+        }
+        body.dark-mode .stopwatch-display {
+            color: #e2e8f0;
+        }
+
+        .hidden {
+            display: none;
+            opacity: 0;
+        }
+        .visible {
+            display: flex;
+            opacity: 1;
+        }
+        .input-field {
+            font-size: 3rem; /* Large font for input */
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 2px solid #cbd5e0; /* Light gray border */
+            text-align: center;
+            width: 100%; /* Full width within its container */
+            max-width: 200px; /* Max width for input */
+            margin-right: 0.5rem;
+        }
+        .unit-label {
+            font-size: 3.75rem; /* Increased to 2.5rem * 1.5 = 3.75rem (kept as requested) */
+            color: #4a5568; /* Darker gray color */
+        }
+        .action-button {
+            background-color: #4c51bf; /* Indigo button */
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .action-button:hover {
+            background-color: #5a61c9; /* Lighter indigo on hover */
+            transform: translateY(-2px);
+        }
+        .action-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .stopwatch-display {
+            font-size: 5rem; /* Reverted to original 5rem */
+            font-weight: 700;
+            color: #2d3748; /* Dark gray */
+            margin-bottom: 2rem;
+        }
+        .message-box {
+            background-color: #fee2e2; /* Light red background */
+            color: #c53030; /* Dark red text */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-size: 1rem;
+            display: none; /* Hidden by default */
+        }
+        .message-box.show {
+            display: block;
+        }
+
+        /* Settings Button */
+        .settings-button {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 2rem;
+            color: #4a5568;
+            transition: color 0.3s ease;
+        }
+        body.dark-mode .settings-button {
+            color: #cbd5e0;
+        }
+        .settings-button:hover {
+            color: #2d3748;
+        }
+        body.dark-mode .settings-button:hover {
+            color: #e2e8f0;
+        }
+
+        /* Settings Modal */
+        .settings-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Dark overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .settings-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .settings-modal-content {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            position: relative;
+            text-align: left;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        body.dark-mode .settings-modal-content {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+        .settings-modal-content h2 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: #2d3748;
+        }
+        body.dark-mode .settings-modal-content h2 {
+            color: #e2e8f0;
+        }
+        .settings-modal-content .close-button {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #a0aec0;
+        }
+        .settings-modal-content .close-button:hover {
+            color: #4a5568;
+        }
+        body.dark-mode .settings-modal-content .close-button {
+            color: #cbd5e0;
+        }
+        body.dark-mode .settings-modal-content .close-button:hover {
+            color: #e2e8f0;
+        }
+        .settings-option-group {
+            margin-bottom: 1.5rem;
+        }
+        .settings-option-group label {
+            display: block;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #4a5568;
+        }
+        body.dark-mode .settings-option-group label {
+            color: #cbd5e0;
+        }
+        .settings-option-group div {
+            display: flex;
+            gap: 1rem;
+        }
+        .settings-option-group input[type="radio"] {
+            margin-right: 0.5rem;
+        }
+        .settings-option-group span {
+            font-size: 1.125rem;
+            color: #4a5568;
+        }
+        body.dark-mode .settings-option-group span {
+            color: #a0aec0;
+        }
+    </style>
+</head>
+<body class="light-mode">
+    <div id="instructionScreen" class="screen-container visible">
+        <button id="settingsButton1" class="settings-button" aria-label="設定">⚙️</button>
+        <h1 class="text-4xl font-bold text-gray-800 mb-8">操作手順</h1>
+        <ol class="list-decimal list-inside text-left text-xl text-gray-700 space-y-4">
+            <li>気温を入力した後、決定ボタンを押します。</li>
+            <li>時間を計る画面に移るので雷が光ったら画面をタップして時間を計ります。</li>
+            <li>雷の音が鳴ったらもう一度画面をタップします。</li>
+        </ol>
+        <button id="startAppButton" class="action-button mt-12">アプリを開始</button>
+    </div>
+
+    <div id="temperatureInputScreen" class="screen-container hidden">
+        <button id="settingsButton2" class="settings-button" aria-label="設定">⚙️</button>
+        <h1 class="text-4xl font-bold text-gray-800 mb-8">気温を入力してください</h1>
+        <div class="flex items-center mb-8">
+            <input type="number" id="temperatureInput" class="input-field" placeholder="25" min="-273.15" max="1000" step="0.01">
+            <span class="unit-label">℃</span>
+        </div>
+        <button id="confirmTemperatureButton" class="action-button">決定</button>
+        <div id="temperatureError" class="message-box">
+            有効な気温を入力してください (-273.15℃ から 1000℃ まで)。
+        </div>
+    </div>
+
+    <div id="stopwatchScreen" class="screen-container hidden">
+        <h1 class="text-4xl font-bold text-gray-800 mb-8">時間を計る</h1>
+        <div class="flex items-baseline mb-8">
+            <span id="stopwatchDisplay" class="stopwatch-display">0.00</span>
+            <span class="unit-label ml-2">s</span>
+        </div>
+        <p class="text-xl text-gray-600 mb-4">画面をタップしてストップウォッチを開始/停止</p>
+        <div id="stopwatchMessage" class="message-box"></div>
+    </div>
+
+    <div id="resultScreen" class="screen-container hidden">
+        <button id="settingsButton3" class="settings-button" aria-label="設定">⚙️</button>
+        <h1 class="text-4xl font-bold text-gray-800 mb-8">雷までの距離は</h1>
+        <div class="flex items-baseline mb-8">
+            <span id="distanceDisplay" class="stopwatch-display">0.00</span>
+            <span class="unit-label ml-2">m</span>
+        </div>
+        <div class="flex flex-col space-y-4 mt-8">
+            <button id="measureAgainButton" class="action-button">もう一度測る</button>
+            <button id="changeTemperatureButton" class="action-button bg-blue-500 hover:bg-blue-600">気温を変更する</button>
+        </div>
+    </div>
+
+    <div id="settingsModalOverlay" class="settings-modal-overlay">
+        <div class="settings-modal-content">
+            <button class="close-button" aria-label="閉じる">✖️</button>
+            <h2 class="text-gray-800">設定</h2>
+
+            <div class="settings-option-group">
+                <label for="themeSelection">テーマ</label>
+                <div id="themeSelection">
+                    <input type="radio" id="lightMode" name="theme" value="light">
+                    <span>ライトモード</span>
+                    <input type="radio" id="darkMode" name="theme" value="dark">
+                    <span>ダークモード</span>
+                </div>
+            </div>
+
+            <div class="settings-option-group">
+                <label for="unitSelection">距離の単位</label>
+                <div id="unitSelection">
+                    <input type="radio" id="unitMeters" name="unit" value="m">
+                    <span>メートル (m)</span>
+                    <input type="radio" id="unitKilometers" name="unit" value="km">
+                    <span>キロメートル (km)</span>
+                    <input type="radio" id="unitAuto" name="unit" value="auto">
+                    <span>自動</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get references to screen elements
+        const instructionScreen = document.getElementById('instructionScreen');
+        const temperatureInputScreen = document.getElementById('temperatureInputScreen');
+        const stopwatchScreen = document.getElementById('stopwatchScreen');
+        const resultScreen = document.getElementById('resultScreen');
+
+        // Get references to buttons and input fields
+        const startAppButton = document.getElementById('startAppButton');
+        const temperatureInput = document.getElementById('temperatureInput');
+        const confirmTemperatureButton = document.getElementById('confirmTemperatureButton');
+        const temperatureError = document.getElementById('temperatureError');
+        const stopwatchDisplay = document.getElementById('stopwatchDisplay');
+        const stopwatchMessage = document.getElementById('stopwatchMessage');
+        const distanceDisplay = document.getElementById('distanceDisplay');
+        const measureAgainButton = document.getElementById('measureAgainButton');
+        const changeTemperatureButton = document.getElementById('changeTemperatureButton');
+
+        // Get references to settings elements
+        const settingsButtons = [
+            document.getElementById('settingsButton1'),
+            document.getElementById('settingsButton2'),
+            document.getElementById('settingsButton3')
+        ];
+        const settingsModalOverlay = document.getElementById('settingsModalOverlay');
+        const settingsModalContent = settingsModalOverlay.querySelector('.settings-modal-content');
+        const closeSettingsButton = settingsModalOverlay.querySelector('.close-button');
+        const lightModeRadio = document.getElementById('lightMode');
+        const darkModeRadio = document.getElementById('darkMode');
+        const unitMetersRadio = document.getElementById('unitMeters');
+        const unitKilometersRadio = document.getElementById('unitKilometers');
+        const unitAutoRadio = document.getElementById('unitAuto');
+
+        // Global variables for data and state
+        let temperature = 0;
+        let startTime;
+        let elapsedTime = 0;
+        let stopwatchInterval;
+        let isRunning = false;
+        let isTransitioning = false; // New flag to prevent taps during transition
+
+        // Global variables for settings
+        let currentTheme = localStorage.getItem('theme') || 'light'; // 'light' or 'dark'
+        let currentUnit = localStorage.getItem('unit') || 'auto'; // 'm', 'km', 'auto'
+
+        // Function to show a specific screen and hide others
+        function showScreen(screenToShow) {
+            instructionScreen.classList.add('hidden');
+            instructionScreen.classList.remove('visible');
+            temperatureInputScreen.classList.add('hidden');
+            temperatureInputScreen.classList.remove('visible');
+            stopwatchScreen.classList.add('hidden');
+            stopwatchScreen.classList.remove('visible');
+            resultScreen.classList.add('hidden');
+            resultScreen.classList.remove('visible');
+
+            screenToShow.classList.remove('hidden');
+            screenToShow.classList.add('visible');
+            isTransitioning = false; // Reset transition flag once screen is visible
+        }
+
+        // Function to reset stopwatch state
+        function resetStopwatch() {
+            elapsedTime = 0;
+            isRunning = false;
+            clearInterval(stopwatchInterval);
+            stopwatchDisplay.textContent = '0.00';
+            stopwatchMessage.classList.remove('show');
+            stopwatchMessage.textContent = '';
+            isTransitioning = false; // Ensure this is false on reset
+        }
+
+        // Function to apply theme
+        function applyTheme(theme) {
+            document.body.classList.remove('light-mode', 'dark-mode');
+            document.body.classList.add(`${theme}-mode`);
+            localStorage.setItem('theme', theme);
+
+            // Update radio button checked state
+            if (theme === 'light') {
+                lightModeRadio.checked = true;
+            } else {
+                darkModeRadio.checked = true;
+            }
+        }
+
+        // Function to apply unit
+        function applyUnit(unit) {
+            currentUnit = unit;
+            localStorage.setItem('unit', unit);
+
+            // Update radio button checked state
+            if (unit === 'm') {
+                unitMetersRadio.checked = true;
+            } else if (unit === 'km') {
+                unitKilometersRadio.checked = true;
+            } else {
+                unitAutoRadio.checked = true;
+            }
+            // If on result screen, re-calculate and display distance with new unit
+            if (resultScreen.classList.contains('visible')) {
+                calculateDistance();
+            }
+        }
+
+        // Function to update distance display based on selected unit
+        function updateDistanceDisplay(distanceInMeters) {
+            let displayValue;
+            let displayUnit;
+            let prefix = '';
+
+            if (currentUnit === 'km') {
+                displayValue = (distanceInMeters / 1000).toFixed(1);
+                displayUnit = 'km';
+                prefix = '約';
+            } else if (currentUnit === 'm') {
+                displayValue = distanceInMeters.toFixed(2);
+                displayUnit = 'm';
+            } else { // 'auto'
+                if (distanceInMeters >= 1000) {
+                    displayValue = (distanceInMeters / 1000).toFixed(1);
+                    displayUnit = 'km';
+                    prefix = '約';
+                } else {
+                    displayValue = distanceInMeters.toFixed(2);
+                    displayUnit = 'm';
+                }
+            }
+            distanceDisplay.textContent = `${prefix}${displayValue}`;
+            document.querySelector('#resultScreen .unit-label').textContent = displayUnit;
+        }
+
+        // Event listener for the "アプリを開始" (Start App) button
+        startAppButton.addEventListener('click', () => {
+            showScreen(temperatureInputScreen);
+            temperatureInput.focus(); // Focus on the input field
+        });
+
+        // Event listener for the "決定" (Confirm Temperature) button
+        confirmTemperatureButton.addEventListener('click', () => {
+            const inputTemp = parseFloat(temperatureInput.value);
+
+            // Validate temperature input
+            if (isNaN(inputTemp) || inputTemp < -273.15 || inputTemp > 1000) {
+                temperatureError.classList.add('show');
+            } else {
+                temperatureError.classList.remove('show');
+                temperature = inputTemp;
+                resetStopwatch(); // Reset stopwatch before going to stopwatch screen
+                showScreen(stopwatchScreen);
+            }
+        });
+
+        // Event listener for the stopwatch screen (tap to start/stop)
+        stopwatchScreen.addEventListener('click', () => {
+            if (isTransitioning) { // Prevent interaction if transitioning
+                return;
+            }
+
+            if (!isRunning) {
+                // Start stopwatch
+                startTime = Date.now() - elapsedTime; // Adjust startTime if resuming
+                stopwatchInterval = setInterval(() => {
+                    elapsedTime = Date.now() - startTime;
+                    stopwatchDisplay.textContent = (elapsedTime / 1000).toFixed(2);
+                }, 10); // Update every 0.01 seconds (10 milliseconds)
+                isRunning = true;
+                stopwatchMessage.textContent = 'ストップウォッチが開始されました。雷の音が鳴ったらもう一度タップしてください。';
+                stopwatchMessage.classList.add('show');
+            } else {
+                // Stop stopwatch
+                clearInterval(stopwatchInterval);
+                isRunning = false;
+                stopwatchMessage.textContent = 'ストップウォッチが停止されました。';
+                stopwatchMessage.classList.add('show');
+                isTransitioning = true; // Set flag to prevent further taps
+                setTimeout(() => {
+                    calculateDistance();
+                    showScreen(resultScreen);
+                    // isTransitioning is reset in showScreen
+                }, 1000); // Wait a moment before showing results
+            }
+        });
+
+        // Function to calculate and display the distance
+        function calculateDistance() {
+            // Speed of sound calculation based on temperature (t)
+            // v = 20.055 * sqrt(273.15 + t)
+            const speedOfSound = 20.055 * Math.sqrt(273.15 + temperature);
+
+            // Distance = speed * time
+            const distance = speedOfSound * (elapsedTime / 1000); // elapsedTime is in ms, convert to seconds
+
+            updateDistanceDisplay(distance); // Use the new function to display
+        }
+
+        // Event listener for "もう一度測る" (Measure again) button
+        measureAgainButton.addEventListener('click', () => {
+            resetStopwatch(); // Reset stopwatch state
+            showScreen(stopwatchScreen); // Go back to stopwatch screen
+        });
+
+        // Event listener for "気温を変更する" (Change temperature) button
+        changeTemperatureButton.addEventListener('click', () => {
+            temperature = 0; // Reset temperature
+            temperatureInput.value = ''; // Clear input field
+            resetStopwatch(); // Reset stopwatch state
+            showScreen(temperatureInputScreen); // Go back to temperature input screen
+        });
+
+        // Event listeners for settings buttons
+        settingsButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                settingsModalOverlay.classList.add('show');
+            });
+        });
+
+        // Event listener for closing settings modal
+        closeSettingsButton.addEventListener('click', () => {
+            settingsModalOverlay.classList.remove('show');
+        });
+
+        // Event listener for theme radio buttons
+        lightModeRadio.addEventListener('change', () => applyTheme('light'));
+        darkModeRadio.addEventListener('change', () => applyTheme('dark'));
+
+        // Event listener for unit radio buttons
+        unitMetersRadio.addEventListener('change', () => applyUnit('m'));
+        unitKilometersRadio.addEventListener('change', () => applyUnit('km'));
+        unitAutoRadio.addEventListener('change', () => applyUnit('auto'));
+
+        // Initial application of theme and unit on page load
+        applyTheme(currentTheme);
+        applyUnit(currentUnit); // This will also set the radio button state
+
+        // Initial screen display
+        showScreen(instructionScreen);
+    </script>
+</body>
+</html>
